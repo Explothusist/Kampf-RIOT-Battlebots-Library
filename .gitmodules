@@ -1,0 +1,6 @@
+[submodule "Automat"]
+	path = Automat
+	url = https://github.com/Explothusist/Automat
+[submodule "ESP32Servo"]
+	path = ESP32Servo
+	url = https://github.com/madhephaestus/ESP32Servo
