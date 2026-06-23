@@ -21,6 +21,8 @@ namespace kmpf {
             void teleopPeriodic() override;
 
             void armMotor();
+            void disarmMotor();
+            void spinMotor(double percent_power);
         private:
             Servo m_motor;
             int m_pin;
@@ -30,8 +32,12 @@ namespace kmpf {
             // int m_pwm_max_us;
             // int m_pwm_slew_rate_us;
             atmt::SlewRateLimiter m_current_pwm_width;
+            double m_pwm_width_minimum_us; // For percent power
+            double m_pwm_width_range_us;
+            double m_pwm_target_width_us;
 
             bool m_is_armed;
+            atmt::Timestamp m_last_command;
     };
 
 };

@@ -34,6 +34,8 @@ namespace kmpf {
             constexpr double k_MaxPWMPulseWidthUs = 1800.0;
             constexpr double k_PWMPulseWidthSecondsToMax = 3.0; // Seconds
             constexpr double k_MaxPWMPulseSlewRate = (k_MaxPWMPulseWidthUs - k_MinPWMPulseWidthUs) / k_PWMPulseWidthSecondsToMax;
+            
+            constexpr double k_SpindownTimeoutSec = 0.5; // Seconds
         }
         // namespace Servo {
         //     constexpr int k_Pin1_Forward = 10;

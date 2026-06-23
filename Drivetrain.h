@@ -20,6 +20,7 @@ namespace kmpf {
             void teleopPeriodic() override;
 
             void driveTank(double left_percent, double right_percent);
+            void driveArcade(double forward_percent, double turn_percent);
             void stopDrive();
 
             void setMaxPower(double max_power);
@@ -29,6 +30,11 @@ namespace kmpf {
             int m_right_pin1_forward;
             int m_right_pin2_backward;
             double m_max_power;
+
+            atmt::SlewRateLimiter m_left_motor_current_power;
+            double m_left_motor_target_power;
+            atmt::SlewRateLimiter m_right_motor_current_power;
+            double m_right_motor_target_power;
     };
 
 };
