@@ -1,4 +1,4 @@
-# RIOT-Battlebots-Library
+# Kampf-RIOT-Battlebots-Library
 
 C++ library built on the Automat robot control library to control battlebots for the Robo RIOT competition. Contains prebuilt Subsystems to allow competitors to develop custom code for their battlebots quickly and easily.
 

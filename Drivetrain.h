@@ -20,6 +20,8 @@ namespace kmpf {
             void teleopPeriodic() override;
 
             void driveTank(double left_percent, double right_percent);
+            void stopDrive();
+
             void setMaxPower(double max_power);
         private:
             int m_left_pin1_forward;
