@@ -89,5 +89,16 @@ namespace kmpf {
         m_pwm_target_width_us = m_pwm_width_minimum_us + m_pwm_width_range_us * percent_power;
         m_last_command = atmt::getSystemTime();
     };
+    void WeaponMotor::spinDown() {
+        if (!m_is_armed) return;
+
+        spinMotor(0.0);
+    };
+    void WeaponMotor::cutoff() {
+        if (!m_is_armed) return;
+
+        spinMotor(0.0);
+        m_current_pwm_width.resetValue(m_pwm_width_minimum_us);
+    };
 
 };

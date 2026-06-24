@@ -23,6 +23,8 @@ namespace kmpf {
             void armMotor();
             void disarmMotor();
             void spinMotor(double percent_power);
+            void spinDown();
+            void cutoff();
         private:
             Servo m_motor;
             int m_pin;
