@@ -135,8 +135,10 @@ namespace kmpf {
     };
     atmt::JoystickState ESPNowReceiver::mapPacketToJoystickState(ESPNowPacket* packet) {
         atmt::JoystickState new_state{ };
-        new_state.buttons[atmt::AButton] = packet->arm_weapon_motor;
-        new_state.buttons[atmt::BButton] = packet->run_weapon_motor;
+        // new_state.buttons[atmt::AButton] = packet->arm_weapon_motor;
+        // new_state.buttons[atmt::BButton] = packet->run_weapon_motor;
+        atmt::setJoystickStateButton(new_state, atmt::AButton, packet->arm_weapon_motor);
+        atmt::setJoystickStateButton(new_state, atmt::BButton, packet->run_weapon_motor);
 
         switch (packet->joystick_direction[0]) {
             case JoystickDirection::Forward:
