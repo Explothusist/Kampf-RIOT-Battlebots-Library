@@ -8,22 +8,19 @@
 
 namespace kmpf {
 
-    ESPNowReceiver::ESPNowReceiver(std::string receiver_name, atmt::Joystick* linked_joystick):
+    ESPNowReceiver::ESPNowReceiver(std::string receiver_name, atmt::Joystick* linked_joystick, atmt::ESPNowHandler* linked_handler):
         m_broadcast_loop{ atmt::TimeoutManager(consts::ESPNow::k_BroadcastDelaySec) },
+        m_heartbeat_loop{ atmt::TimeoutManager(consts::ESPNow::k_HeartbeatDelaySec) },
         m_led_1_transmit_loop{ atmt::TimeoutManager(consts::LED::k_BlinkRateSec) },
         m_led_2_receive_loop{ atmt::TimeoutManager(consts::LED::k_BlinkRateSec) },
         m_last_packet_timestamp{ atmt::Timestamp(0) },
         m_is_connected_to_controller{ false },
-        m_pending_packet{ false },
         m_receiver_name{ receiver_name },
-        m_receiver_mac_address{ },
         m_linked_joystick{ linked_joystick },
+        m_linked_espnow_handler{ linked_handler },
         m_initialized_without_error{ false }
     {
-        if (ESPNowReceiver::Instance != nullptr) {
-            atmt::platform_printf("ESPNowReceiver Already Initialized, Replacing Default Instance");
-        }
-        ESPNowReceiver::Instance = this;
+        
     }
     ESPNowReceiver::~ESPNowReceiver() {
 
@@ -36,27 +33,12 @@ namespace kmpf {
         digitalWrite(consts::LED::k_LED1_Transmit, LOW);
         digitalWrite(consts::LED::k_LED2_Received, LOW);
 
-        WiFi.mode(WIFI_MODE_STA);
-        WiFi.disconnect();
-        WiFi.macAddress(m_receiver_mac_address);
-        WiFi.setTxPower(WIFI_POWER_19dBm);
+        // ESPNow will be init() by ESPNowHandler as long as it is registered
 
-        int result = esp_now_init();
-        if (result != ESP_OK) {
-            atmt::platform_printf("ESPNow Init Failed with Error");
+        if (!m_linked_espnow_handler) {
+            atmt::platform_printf("Linked ESPNowHandler Not Valid");
             return;
         }
-        esp_now_register_recv_cb(ESPNowReceiver::onReceivePacket);
-        esp_now_peer_info_t broadcast_peer_info = {};
-        memcpy(broadcast_peer_info.peer_addr, consts::ESPNow::k_ESPNowBroadcastAddress, 6);
-        broadcast_peer_info.channel = 0;
-        broadcast_peer_info.encrypt = false;
-        result = esp_now_add_peer(&broadcast_peer_info);
-        if (result != ESP_OK) {
-            atmt::platform_printf("ESPNow Add Peer Failed with Error");
-            return;
-        }
-
         if (!m_linked_joystick) {
             atmt::platform_printf("Linked Joystick Not Valid");
             return;
@@ -73,13 +55,57 @@ namespace kmpf {
             digitalWrite(consts::LED::k_LED2_Received, LOW);
         }
 
-        if (m_pending_packet) {
-            m_pending_packet = false;
-            m_linked_joystick->updateState(mapPacketToJoystickState(&m_last_packet));
-        }else if (!m_is_connected_to_controller || m_last_packet_timestamp.getTimeDifference(atmt::getSystemTime()) > consts::ESPNow::k_ESPNowDisableTimeoutSec) {
-            m_is_connected_to_controller = false;
-            m_linked_joystick->updateState(zeroJoystickInputs());
+        while (m_linked_espnow_handler->packet.availableMessages()) {
+            uint8_t prefix;
+            bool result = m_linked_espnow_handler->packet.peekNextMessagePrefix(prefix);
+            if (!result) continue;
+
+            switch (static_cast<PacketPrefixes>(prefix)) {
+                case PacketPrefixes::Receiver_InitiatePair:
+                    // Ignore
+                    break;
+                case PacketPrefixes::Receiver_SendHeartbeat:
+                    // Ignore
+                    break;
+                case PacketPrefixes::Controller_AcknowledgePair:
+                    // Ignore if already connected
+                    if (!m_is_connected_to_controller) {
+                        uint8_t buffer[sizeof(Packet_PairingPacket)];
+                        uint8_t length;
+
+                        m_linked_espnow_handler->packet.popNextMessagePrefixed(prefix, buffer, length); // No need to memcpy buffer
+                        Packet_PairingPacket* packet = reinterpret_cast<Packet_PairingPacket*>(buffer);
+
+                        m_linked_espnow_handler->setTargetMACAddress(packet->sender_mac_address);
+                        m_is_connected_to_controller = true;
+                    }
+                    break;
+                case PacketPrefixes::Controller_SendJoystickState:
+                    // Ignore if not connected
+                    if (m_is_connected_to_controller) {
+                        uint8_t buffer[sizeof(atmt::JoystickState)];
+                        uint8_t length;
+
+                        m_linked_espnow_handler->packet.popNextMessagePrefixed(prefix, buffer, length); // No need to memcpy buffer
+                        atmt::JoystickState* packet = reinterpret_cast<atmt::JoystickState*>(buffer);
+
+                        m_linked_joystick->updateState(*packet);
+                        m_last_packet_timestamp = atmt::getSystemTime();
+                    }
+                    break;
+            }
+        }
+        
+        if (!m_is_connected_to_controller || m_last_packet_timestamp.getTimeDifference(atmt::getSystemTime()) > consts::ESPNow::k_ESPNowDisableTimeoutSec) {
+            if (m_is_connected_to_controller) { // Timeout disconnect
+                m_linked_espnow_handler->setTargetMACAddress(atmt::k_ESPNowBroadcastAddress);
+                m_is_connected_to_controller = false;
+                m_linked_joystick->updateState(zeroJoystickInputs());
+            }
+
             broadcastLocateController();
+        }else {
+            sendHeartbeat();
         }
     };
     void ESPNowReceiver::disabledPeriodic() {};
@@ -90,8 +116,14 @@ namespace kmpf {
         if (!m_initialized_without_error) return;
 
         if (m_broadcast_loop.checkTimeout()) { // Limits to once per k_BroadcastDelaySec (0.5 seconds)
-            int result = esp_now_send(consts::ESPNow::k_ESPNowBroadcastAddress, reinterpret_cast<const uint8_t*>(m_receiver_name.data()), m_receiver_name.size());
-            if (result == ESP_OK) {
+            Packet_PairingPacket message;
+            memcpy(message.sender_mac_address, m_linked_espnow_handler->GetMACAddress(), 6);
+            memcpy(message.sender_name, m_receiver_name.data(), std::min(m_receiver_name.size(), 10u));
+            
+            // int result = esp_now_send(consts::ESPNow::k_ESPNowBroadcastAddress, reinterpret_cast<const uint8_t*>(m_receiver_name.data()), m_receiver_name.size());
+            bool result = m_linked_espnow_handler->packet.sendMessagePrefixedAll(static_cast<uint8_t>(PacketPrefixes::Receiver_InitiatePair), reinterpret_cast<uint8_t*>(&message), sizeof(Packet_PairingPacket));
+            // if (result == ESP_OK) {
+            if (result) {
                 // int current_led_status = digitalRead(consts::LED::k_LED1_Transmit);
                 if (m_led_1_transmit_loop.checkTimeout()) {
                     digitalWrite(consts::LED::k_LED1_Transmit, HIGH); // Blink LED
@@ -105,67 +137,26 @@ namespace kmpf {
             }
         }
     };
-    void ESPNowReceiver::instanceReceivePacket(const uint8_t* mac_info, const uint8_t* incoming_data, int data_length) {
-        if (data_length != sizeof(ESPNowPacket)) {
-            atmt::platform_printf("Unexpected Packet Length: %d\n", data_length);
-            return;
+    void ESPNowReceiver::sendHeartbeat() {
+        if (!m_initialized_without_error) return;
+
+        if (m_heartbeat_loop.checkTimeout()) { // Limits to once per k_BroadcastDelaySec (0.5 seconds)
+            // int result = esp_now_send(consts::ESPNow::k_ESPNowBroadcastAddress, reinterpret_cast<const uint8_t*>(m_receiver_name.data()), m_receiver_name.size());
+            bool result = m_linked_espnow_handler->packet.sendMessageAll(static_cast<uint8_t>(PacketPrefixes::Receiver_SendHeartbeat));
+            // if (result == ESP_OK) {
+            if (result) {
+                // int current_led_status = digitalRead(consts::LED::k_LED1_Transmit);
+                if (m_led_1_transmit_loop.checkTimeout()) {
+                    digitalWrite(consts::LED::k_LED1_Transmit, HIGH); // Blink LED
+                }
+                atmt::platform_printf("Heartbeat Message Sent Successfully\n");
+            }else {
+                if (m_led_1_transmit_loop.checkTimeout()) {
+                    digitalWrite(consts::LED::k_LED1_Transmit, LOW);
+                }
+                atmt::platform_printf("Heartbeat Message Failure: %02x\n", result);
+            }
         }
-        atmt::platform_printf("ESPNow Packet Received\n");
-        memcpy(&m_last_packet, incoming_data, sizeof(ESPNowPacket));
-        if (m_led_2_receive_loop.checkTimeout()) {
-            digitalWrite(consts::LED::k_LED2_Received, HIGH);
-        }
-        m_last_packet_timestamp = atmt::getSystemTime();
-        m_is_connected_to_controller = true;
-
-        // m_linked_joystick->updateState(mapPacketToJoystickState(m_last_packet));
-        m_pending_packet = true;
-
-        // if (!esp_now_is_peer_exist(m_last_packet->sender_mac_address)) {
-        //     atmt::platform_printf("Adding Peer\n");
-        //     // ESPNow.add_peer(m_last_packet->sender_mac_address);    
-        //     esp_now_add_peer(m_last_packet->sender_mac_address);
-        // }
-        // if (memcmp(m_last_packet->sender_mac_address, m_receiver_mac_address, 6) == 0) {
-        //     digitalWrite(consts::LED::k_LED3_Armed, HIGH);
-        // }
-    };
-    void ESPNowReceiver::onReceivePacket(const uint8_t* mac_info, const uint8_t* incoming_data, int data_length) {
-        ESPNowReceiver::Instance->instanceReceivePacket(mac_info, incoming_data, data_length);
-    };
-    atmt::JoystickState ESPNowReceiver::mapPacketToJoystickState(ESPNowPacket* packet) {
-        atmt::JoystickState new_state{ };
-        // new_state.buttons[atmt::AButton] = packet->arm_weapon_motor;
-        // new_state.buttons[atmt::BButton] = packet->run_weapon_motor;
-        atmt::setJoystickStateButton(new_state, atmt::AButton, packet->arm_weapon_motor);
-        atmt::setJoystickStateButton(new_state, atmt::BButton, packet->run_weapon_motor);
-
-        switch (packet->joystick_direction[0]) {
-            case JoystickDirection::Forward:
-                new_state.axes[atmt::LXAxis] = 0;
-                new_state.axes[atmt::LYAxis] = 100;
-                break;
-            case JoystickDirection::Backward:
-                new_state.axes[atmt::LXAxis] = 0;
-                new_state.axes[atmt::LYAxis] = -100;
-                break;
-            case JoystickDirection::Left:
-                new_state.axes[atmt::LXAxis] = -100;
-                new_state.axes[atmt::LYAxis] = 0;
-                break;
-            case JoystickDirection::Right:
-                new_state.axes[atmt::LXAxis] = 100;
-                new_state.axes[atmt::LYAxis] = 0;
-                break;
-            case JoystickDirection::Centered:
-                new_state.axes[atmt::LXAxis] = 0;
-                new_state.axes[atmt::LYAxis] = 0;
-                break;
-        }
-        new_state.axis_range[0] = -100;
-        new_state.axis_range[1] = 100;
-
-        return new_state;
     };
     atmt::JoystickState ESPNowReceiver::zeroJoystickInputs() {
         atmt::JoystickState new_state{ };

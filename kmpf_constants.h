@@ -10,6 +10,7 @@ namespace kmpf {
         namespace ESPNow {
             constexpr uint8_t k_ESPNowBroadcastAddress[] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
             constexpr double k_BroadcastDelaySec = 0.5; // Seconds 
+            constexpr double k_HeartbeatDelaySec = 0.2; // Seconds 
             // constexpr const char* k_ESPNowId = "Spenc";
             constexpr double k_ESPNowDisableTimeoutSec = 1.0; // Seconds
         }
