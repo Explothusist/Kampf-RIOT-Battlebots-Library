@@ -6,13 +6,13 @@
 
 namespace kmpf {
 
-    enum class JoystickDirection : uint8_t {
-        Centered = 0,
-        Forward = 1,
-        Backward = 2,
-        Left = 3,
-        Right = 4
-    };
+    // enum class JoystickDirection : uint8_t {
+    //     Centered = 0,
+    //     Forward = 1,
+    //     Backward = 2,
+    //     Left = 3,
+    //     Right = 4
+    // };
 
     // Instead of the custom packet, use atmt::JoystickState
 
@@ -35,12 +35,14 @@ namespace kmpf {
         uint8_t sender_mac_address[6];
         char sender_name[10];
     } __attribute__((packed));
+    static_assert(sizeof(Packet_PairingPacket) == 16);
 
     enum class PacketPrefixes : uint8_t {
         Receiver_InitiatePair = 0,
-        Receiver_SendHeartbeat = 1,
-        Controller_AcknowledgePair = 2,
-        Controller_SendJoystickState = 3
+        Receiver_AcknowledgePair = 1, // Three way handshake
+        Receiver_SendHeartbeat = 2,
+        Controller_AcknowledgePair = 3,
+        Controller_SendJoystickState = 4
     };
 
 };

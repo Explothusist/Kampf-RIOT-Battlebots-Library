@@ -20,6 +20,7 @@ namespace kmpf {
             void teleopPeriodic() override;
 
             void broadcastLocateController();
+            void acknowledgePair();
             void sendHeartbeat();
             static atmt::JoystickState zeroJoystickInputs();
 

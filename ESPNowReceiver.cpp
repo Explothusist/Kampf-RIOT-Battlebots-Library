@@ -64,6 +64,9 @@ namespace kmpf {
                 case PacketPrefixes::Receiver_InitiatePair:
                     // Ignore
                     break;
+                case PacketPrefixes::Receiver_AcknowledgePair:
+                    // Ignore
+                    break;
                 case PacketPrefixes::Receiver_SendHeartbeat:
                     // Ignore
                     break;
@@ -74,10 +77,12 @@ namespace kmpf {
                         uint8_t length;
 
                         m_linked_espnow_handler->packet.popNextMessagePrefixed(prefix, buffer, length); // No need to memcpy buffer
-                        Packet_PairingPacket* packet = reinterpret_cast<Packet_PairingPacket*>(buffer);
+                        if (length != sizeof(Packet_PairingPacket)) break;
+                        const Packet_PairingPacket& packet = *reinterpret_cast<Packet_PairingPacket*>(buffer);
 
-                        m_linked_espnow_handler->setTargetMACAddress(packet->sender_mac_address);
+                        m_linked_espnow_handler->setTargetMACAddress(packet.sender_mac_address);
                         m_is_connected_to_controller = true;
+                        acknowledgePair();
                     }
                     break;
                 case PacketPrefixes::Controller_SendJoystickState:
@@ -87,9 +92,10 @@ namespace kmpf {
                         uint8_t length;
 
                         m_linked_espnow_handler->packet.popNextMessagePrefixed(prefix, buffer, length); // No need to memcpy buffer
-                        atmt::JoystickState* packet = reinterpret_cast<atmt::JoystickState*>(buffer);
+                        if (length != sizeof(atmt::JoystickState)) break;
+                        const atmt::JoystickState& packet = *reinterpret_cast<atmt::JoystickState*>(buffer);
 
-                        m_linked_joystick->updateState(*packet);
+                        m_linked_joystick->updateState(packet);
                         m_last_packet_timestamp = atmt::getSystemTime();
                     }
                     break;
@@ -116,9 +122,10 @@ namespace kmpf {
         if (!m_initialized_without_error) return;
 
         if (m_broadcast_loop.checkTimeout()) { // Limits to once per k_BroadcastDelaySec (0.5 seconds)
-            Packet_PairingPacket message;
+            Packet_PairingPacket message{ };
             memcpy(message.sender_mac_address, m_linked_espnow_handler->GetMACAddress(), 6);
-            memcpy(message.sender_name, m_receiver_name.data(), std::min(m_receiver_name.size(), 10u));
+            // memcpy(message.sender_name, m_receiver_name.data(), std::min(m_receiver_name.size(), 10u));
+            strncpy(message.sender_name, m_receiver_name.c_str(), sizeof(message.sender_name)-1);
             
             // int result = esp_now_send(consts::ESPNow::k_ESPNowBroadcastAddress, reinterpret_cast<const uint8_t*>(m_receiver_name.data()), m_receiver_name.size());
             bool result = m_linked_espnow_handler->packet.sendMessagePrefixedAll(static_cast<uint8_t>(PacketPrefixes::Receiver_InitiatePair), reinterpret_cast<uint8_t*>(&message), sizeof(Packet_PairingPacket));
@@ -137,6 +144,22 @@ namespace kmpf {
             }
         }
     };
+    void ESPNowReceiver::acknowledgePair() {
+        if (!m_initialized_without_error) return;
+
+        bool result = m_linked_espnow_handler->packet.sendMessageAll(static_cast<uint8_t>(PacketPrefixes::Receiver_AcknowledgePair));
+        if (result) {
+            if (m_led_1_transmit_loop.checkTimeout()) {
+                digitalWrite(consts::LED::k_LED1_Transmit, HIGH); // Blink LED
+            }
+            atmt::platform_printf("Acknowledge Pair Message Sent Successfully\n");
+        }else {
+            if (m_led_1_transmit_loop.checkTimeout()) {
+                digitalWrite(consts::LED::k_LED1_Transmit, LOW);
+            }
+            atmt::platform_printf("Heartbeat Message Failure: %02x\n", result);
+        }
+    };
     void ESPNowReceiver::sendHeartbeat() {
         if (!m_initialized_without_error) return;
 
@@ -149,7 +172,7 @@ namespace kmpf {
                 if (m_led_1_transmit_loop.checkTimeout()) {
                     digitalWrite(consts::LED::k_LED1_Transmit, HIGH); // Blink LED
                 }
-                atmt::platform_printf("Heartbeat Message Sent Successfully\n");
+                // atmt::platform_printf("Heartbeat Message Sent Successfully\n");
             }else {
                 if (m_led_1_transmit_loop.checkTimeout()) {
                     digitalWrite(consts::LED::k_LED1_Transmit, LOW);
