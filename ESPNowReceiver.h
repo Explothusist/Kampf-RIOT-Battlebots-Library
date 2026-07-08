@@ -31,6 +31,7 @@ namespace kmpf {
             atmt::TimeoutManager m_led_2_receive_loop;
             atmt::Timestamp m_last_packet_timestamp;
             bool m_is_connected_to_controller;
+            uint8_t m_connected_controller_address;
 
             std::string m_receiver_name;
 

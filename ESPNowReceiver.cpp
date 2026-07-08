@@ -15,6 +15,7 @@ namespace kmpf {
         m_led_2_receive_loop{ atmt::TimeoutManager(consts::LED::k_BlinkRateSec) },
         m_last_packet_timestamp{ atmt::Timestamp(0) },
         m_is_connected_to_controller{ false },
+        m_connected_controller_address{ 0 },
         m_receiver_name{ receiver_name },
         m_linked_joystick{ linked_joystick },
         m_linked_espnow_handler{ linked_handler },
@@ -75,13 +76,15 @@ namespace kmpf {
                     if (!m_is_connected_to_controller) {
                         uint8_t buffer[sizeof(Packet_PairingPacket)];
                         uint8_t length;
+                        uint8_t sender;
 
-                        m_linked_espnow_handler->packet.popNextMessagePrefixed(prefix, buffer, length); // No need to memcpy buffer
+                        m_linked_espnow_handler->packet.popNextMessagePrefixed(prefix, buffer, length, sender); // No need to memcpy buffer
                         if (length != sizeof(Packet_PairingPacket)) break;
                         const Packet_PairingPacket& packet = *reinterpret_cast<Packet_PairingPacket*>(buffer);
 
                         m_linked_espnow_handler->setTargetMACAddress(packet.sender_mac_address);
                         m_is_connected_to_controller = true;
+                        m_connected_controller_address = sender;
                         acknowledgePair();
                     }
                     break;
@@ -90,9 +93,11 @@ namespace kmpf {
                     if (m_is_connected_to_controller) {
                         uint8_t buffer[sizeof(atmt::JoystickState)];
                         uint8_t length;
+                        uint8_t sender;
 
-                        m_linked_espnow_handler->packet.popNextMessagePrefixed(prefix, buffer, length); // No need to memcpy buffer
+                        m_linked_espnow_handler->packet.popNextMessagePrefixed(prefix, buffer, length, sender); // No need to memcpy buffer
                         if (length != sizeof(atmt::JoystickState)) break;
+                        if (sender != m_connected_controller_address) break;
                         const atmt::JoystickState& packet = *reinterpret_cast<atmt::JoystickState*>(buffer);
 
                         m_linked_joystick->updateState(packet);
@@ -147,7 +152,7 @@ namespace kmpf {
     void ESPNowReceiver::acknowledgePair() {
         if (!m_initialized_without_error) return;
 
-        bool result = m_linked_espnow_handler->packet.sendMessageAll(static_cast<uint8_t>(PacketPrefixes::Receiver_AcknowledgePair));
+        bool result = m_linked_espnow_handler->packet.sendMessage(m_connected_controller_address, static_cast<uint8_t>(PacketPrefixes::Receiver_AcknowledgePair));
         if (result) {
             if (m_led_1_transmit_loop.checkTimeout()) {
                 digitalWrite(consts::LED::k_LED1_Transmit, HIGH); // Blink LED
@@ -165,7 +170,7 @@ namespace kmpf {
 
         if (m_heartbeat_loop.checkTimeout()) { // Limits to once per k_BroadcastDelaySec (0.5 seconds)
             // int result = esp_now_send(consts::ESPNow::k_ESPNowBroadcastAddress, reinterpret_cast<const uint8_t*>(m_receiver_name.data()), m_receiver_name.size());
-            bool result = m_linked_espnow_handler->packet.sendMessageAll(static_cast<uint8_t>(PacketPrefixes::Receiver_SendHeartbeat));
+            bool result = m_linked_espnow_handler->packet.sendMessage(m_connected_controller_address, static_cast<uint8_t>(PacketPrefixes::Receiver_SendHeartbeat));
             // if (result == ESP_OK) {
             if (result) {
                 // int current_led_status = digitalRead(consts::LED::k_LED1_Transmit);

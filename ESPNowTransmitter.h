@@ -11,6 +11,7 @@ namespace kmpf {
 
     struct KnownReceiver {
         uint8_t mac_address[6];
+        uint8_t receiver_address;
         std::string name;
     };
 
@@ -26,7 +27,8 @@ namespace kmpf {
             void teleopPeriodic() override;
 
             const std::vector<KnownReceiver>& getKnownReceivers();
-            void pairWithReceiver(const uint8_t mac_address[]);
+            // void pairWithReceiver(const uint8_t mac_address[]);
+            void pairWithReceiver(KnownReceiver receiver);
             void acknowledgePair();
             void sendState();
 
@@ -35,6 +37,7 @@ namespace kmpf {
             atmt::Timestamp m_last_packet_timestamp;
             bool m_attempting_connect_to_receiver;
             bool m_is_connected_to_receiver;
+            uint8_t m_connected_receiver_address;
 
             std::vector<KnownReceiver> m_known_receivers;
 
