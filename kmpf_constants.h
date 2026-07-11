@@ -59,6 +59,23 @@ namespace kmpf {
             constexpr double k_BlinkRateSec = 0.25;
         }
 
+        namespace Controller {
+            namespace GPIO {
+                constexpr int k_LeftTrigger = 7;
+                constexpr int k_RightTrigger = 21;
+                constexpr int k_BottomButton = 20;
+                constexpr int k_TopButton = 10;
+
+                constexpr int k_Axis1 = 1;
+                constexpr int k_Axis2 = 2;
+                constexpr int k_Axis3 = 3;
+                constexpr int k_Axis4 = 4;
+            }
+
+            // constexpr uint8_t k_SDAPin = 8;
+            // constexpr uint8_t k_SCLPin = 9;
+        }
+
     };
 };
 
