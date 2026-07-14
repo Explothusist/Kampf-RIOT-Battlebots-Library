@@ -32,6 +32,9 @@ namespace kmpf {
             void acknowledgePair();
             void sendState();
 
+            bool isAttemptingConnection();
+            bool isConnected();
+
         private:
             atmt::TimeoutManager m_send_state_loop;
             atmt::Timestamp m_last_packet_timestamp;

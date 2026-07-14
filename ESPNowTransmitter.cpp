@@ -161,5 +161,12 @@ namespace kmpf {
             }
         }
     };
+    
+    bool ESPNowTransmitter::isAttemptingConnection() {
+        return m_attempting_connect_to_receiver && !m_is_connected_to_receiver;
+    };
+    bool ESPNowTransmitter::isConnected() {
+        return m_is_connected_to_receiver;
+    };
 
 };

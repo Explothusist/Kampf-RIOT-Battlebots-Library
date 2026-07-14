@@ -66,11 +66,14 @@ namespace kmpf {
                 constexpr int k_BottomButton = 20;
                 constexpr int k_TopButton = 10;
 
-                constexpr int k_Axis1 = 1;
-                constexpr int k_Axis2 = 2;
-                constexpr int k_Axis3 = 3;
-                constexpr int k_Axis4 = 4;
+                constexpr int k_AxisLX = 1;
+                constexpr int k_AxisLY = 2;
+                constexpr int k_AxisRX = 3;
+                constexpr int k_AxisRY = 4;
             }
+
+            constexpr double k_DisplayLogoTimeSec = 2.0; // Seconds
+            constexpr double k_DrawScreenDelaySec = 0.05; // Seconds
 
             // constexpr uint8_t k_SDAPin = 8;
             // constexpr uint8_t k_SCLPin = 9;
