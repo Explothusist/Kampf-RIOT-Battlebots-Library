@@ -128,7 +128,7 @@ namespace kmpf {
 
         if (m_broadcast_loop.checkTimeout()) { // Limits to once per k_BroadcastDelaySec (0.5 seconds)
             Packet_PairingPacket message{ };
-            memcpy(message.sender_mac_address, m_linked_espnow_handler->GetMACAddress(), 6);
+            memcpy(message.sender_mac_address, m_linked_espnow_handler->GetSystemMACAddress(), 6);
             // memcpy(message.sender_name, m_receiver_name.data(), std::min(m_receiver_name.size(), 10u));
             strncpy(message.sender_name, m_receiver_name.c_str(), sizeof(message.sender_name)-1);
             

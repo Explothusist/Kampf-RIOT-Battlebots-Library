@@ -137,7 +137,7 @@ namespace kmpf {
         if (!m_initialized_without_error) return;
 
         Packet_PairingPacket message{ };
-        memcpy(message.sender_mac_address, m_linked_espnow_handler->GetMACAddress(), 6);
+        memcpy(message.sender_mac_address, m_linked_espnow_handler->GetSystemMACAddress(), 6);
         // memcpy(message.sender_name, m_receiver_name.data(), std::min(m_receiver_name.size(), 10u));
         
         bool result = m_linked_espnow_handler->packet.sendMessagePrefixed(m_connected_receiver_address, static_cast<uint8_t>(PacketPrefixes::Controller_AcknowledgePair), reinterpret_cast<uint8_t*>(&message), sizeof(Packet_PairingPacket));

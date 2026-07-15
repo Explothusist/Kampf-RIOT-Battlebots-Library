@@ -70,10 +70,32 @@ namespace kmpf {
                 constexpr int k_AxisLY = 2;
                 constexpr int k_AxisRX = 3;
                 constexpr int k_AxisRY = 4;
+
+                constexpr int k_AnalogBatteryPower = 5;
+            }
+
+            namespace U8g2 {
+                constexpr int k_DirectionUp = 1;
+                constexpr int k_DirectionDown = 2;
+                constexpr int k_DirectionLeft = 3;
+                constexpr int k_DirectionRight = 4;
+                constexpr int k_DirectionCenter = 0;
+                
+                constexpr int k_GlyphUp = 1;
+                constexpr int k_GlyphDown = 2;
+                constexpr int k_GlyphLeft = 3;
+                constexpr int k_GlyphRight = 4;
+                constexpr int k_NoGlyph = 0;
+                
+                constexpr int k_Battary_0_25 = 0;
+                constexpr int k_Battary_25_50 = 1;
+                constexpr int k_Battary_50_75 = 2;
+                constexpr int k_Battary_75_100 = 3;
             }
 
             constexpr double k_DisplayLogoTimeSec = 2.0; // Seconds
             constexpr double k_DrawScreenDelaySec = 0.05; // Seconds
+            constexpr int k_MACsDrawnPerScreen = 2;
 
             // constexpr uint8_t k_SDAPin = 8;
             // constexpr uint8_t k_SCLPin = 9;
