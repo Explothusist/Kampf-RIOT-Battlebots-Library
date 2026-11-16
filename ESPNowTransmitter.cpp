@@ -11,6 +11,7 @@ namespace kmpf {
     ESPNowTransmitter::ESPNowTransmitter(atmt::ESPNowHandler* linked_handler, std::function<atmt::JoystickState()> state_getter):
         m_send_state_loop{ atmt::TimeoutManager(consts::ESPNow::k_SendStateDelaySec) },
         m_last_packet_timestamp{ atmt::Timestamp(0) },
+        m_attempting_connect_to_receiver{ false },
         m_is_connected_to_receiver{ false },
         m_connected_receiver_address{ 0 },
         m_known_receivers{ },
@@ -38,9 +39,11 @@ namespace kmpf {
         if (!m_initialized_without_error) return;
 
         while (m_linked_espnow_handler->packet.availableMessages()) {
+            atmt::platform_printf("Received Message\n");
             uint8_t prefix;
             bool result = m_linked_espnow_handler->packet.peekNextMessagePrefix(prefix);
             if (!result) break;
+            atmt::platform_printf("Message of Proper Type\n");
 
             switch (static_cast<PacketPrefixes>(prefix)) {
                 case PacketPrefixes::Receiver_InitiatePair:
@@ -108,7 +111,9 @@ namespace kmpf {
         }
         
         if (!m_is_connected_to_receiver || m_last_packet_timestamp.getTimeDifference(atmt::getSystemTime()) > consts::ESPNow::k_ESPNowDisableTimeoutSec) {
+            // atmt::platform_printf("Timeout Event");
             if (m_is_connected_to_receiver) { // Timeout disconnect
+                atmt::platform_printf("Timeout Disconnect\n");
                 m_linked_espnow_handler->setTargetMACAddress(atmt::k_ESPNowBroadcastAddress);
                 m_attempting_connect_to_receiver = false;
                 m_is_connected_to_receiver = false;
@@ -116,7 +121,16 @@ namespace kmpf {
 
             // Either no connection or pending handshake
         }else {
+            atmt::platform_printf("Sending State\n");
             sendState();
+        }
+
+        if (m_is_connected_to_receiver) {
+            atmt::platform_printf("Connected\n");
+        }else if (m_attempting_connect_to_receiver) {
+            atmt::platform_printf("Attempting Connect\n");
+        }else {
+            atmt::platform_printf("Disconnected\n");
         }
     };
     void ESPNowTransmitter::disabledPeriodic() {};
