@@ -39,14 +39,15 @@ namespace kmpf {
         if (!m_initialized_without_error) return;
 
         while (m_linked_espnow_handler->packet.availableMessages()) {
-            atmt::platform_printf("Received Message\n");
+            // atmt::platform_printf("Received Message\n");
             uint8_t prefix;
             bool result = m_linked_espnow_handler->packet.peekNextMessagePrefix(prefix);
             if (!result) break;
-            atmt::platform_printf("Message of Proper Type\n");
+            // atmt::platform_printf("Message of Proper Type\n");
 
             switch (static_cast<PacketPrefixes>(prefix)) {
                 case PacketPrefixes::Receiver_InitiatePair:
+                    atmt::platform_printf("Receiver Initiate Pair\n");
                     // Ignore if already connected
                     if (!m_is_connected_to_receiver) {
                         uint8_t buffer[sizeof(Packet_PairingPacket)];
@@ -74,6 +75,7 @@ namespace kmpf {
                     }
                     break;
                 case PacketPrefixes::Receiver_AcknowledgePair:
+                    atmt::platform_printf("Receiver Acknowledge Pair\n");
                     // Ignore if not pending a connection
                     if (m_attempting_connect_to_receiver && !m_is_connected_to_receiver) {
                         uint8_t buffer[sizeof(Packet_PairingPacket)];
@@ -84,10 +86,12 @@ namespace kmpf {
                         if (length != 1) break;
                         if (sender != m_connected_receiver_address) break;
                         
+                        m_last_packet_timestamp = atmt::getSystemTime();
                         m_is_connected_to_receiver = true;
                     }
                     break;
                 case PacketPrefixes::Receiver_SendHeartbeat:
+                    atmt::platform_printf("Receiver Send Heartbeat\n");
                     // Ignore if not connected
                     if (m_is_connected_to_receiver) {
                         uint8_t buffer[sizeof(Packet_PairingPacket)];
@@ -125,13 +129,13 @@ namespace kmpf {
             sendState();
         }
 
-        if (m_is_connected_to_receiver) {
-            atmt::platform_printf("Connected\n");
-        }else if (m_attempting_connect_to_receiver) {
-            atmt::platform_printf("Attempting Connect\n");
-        }else {
-            atmt::platform_printf("Disconnected\n");
-        }
+        // if (m_is_connected_to_receiver) {
+        //     atmt::platform_printf("Connected\n");
+        // }else if (m_attempting_connect_to_receiver) {
+        //     atmt::platform_printf("Attempting Connect\n");
+        // }else {
+        //     atmt::platform_printf("Disconnected\n");
+        // }
     };
     void ESPNowTransmitter::disabledPeriodic() {};
     void ESPNowTransmitter::autonomousPeriodic() {};
