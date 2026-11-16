@@ -72,6 +72,7 @@ namespace kmpf {
                     // Ignore
                     break;
                 case PacketPrefixes::Controller_AcknowledgePair:
+                    atmt::platform_printf("Controller Acknowledge Pair\n");
                     // Ignore if already connected
                     if (!m_is_connected_to_controller) {
                         uint8_t buffer[sizeof(Packet_PairingPacket)];
@@ -85,10 +86,12 @@ namespace kmpf {
                         m_linked_espnow_handler->setTargetMACAddress(packet.sender_mac_address);
                         m_is_connected_to_controller = true;
                         m_connected_controller_address = sender;
+                        m_last_packet_timestamp = atmt::getSystemTime();
                         acknowledgePair();
                     }
                     break;
                 case PacketPrefixes::Controller_SendJoystickState:
+                    atmt::platform_printf("Controller Received Joystick State\n");
                     // Ignore if not connected
                     if (m_is_connected_to_controller) {
                         uint8_t buffer[sizeof(atmt::JoystickState)];
@@ -109,6 +112,7 @@ namespace kmpf {
         
         if (!m_is_connected_to_controller || m_last_packet_timestamp.getTimeDifference(atmt::getSystemTime()) > consts::ESPNow::k_ESPNowDisableTimeoutSec) {
             if (m_is_connected_to_controller) { // Timeout disconnect
+                atmt::platform_printf("Timeout Disconnect\n");
                 m_linked_espnow_handler->setTargetMACAddress(atmt::k_ESPNowBroadcastAddress);
                 m_is_connected_to_controller = false;
                 m_linked_joystick->updateState(zeroJoystickInputs());
@@ -169,6 +173,7 @@ namespace kmpf {
         if (!m_initialized_without_error) return;
 
         if (m_heartbeat_loop.checkTimeout()) { // Limits to once per k_BroadcastDelaySec (0.5 seconds)
+            atmt::platform_printf("Heartbeat\n");
             // int result = esp_now_send(consts::ESPNow::k_ESPNowBroadcastAddress, reinterpret_cast<const uint8_t*>(m_receiver_name.data()), m_receiver_name.size());
             bool result = m_linked_espnow_handler->packet.sendMessage(m_connected_controller_address, static_cast<uint8_t>(PacketPrefixes::Receiver_SendHeartbeat));
             // if (result == ESP_OK) {
