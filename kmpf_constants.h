@@ -63,8 +63,8 @@ namespace kmpf {
             namespace GPIO {
                 constexpr int k_LeftTrigger = 7;
                 constexpr int k_RightTrigger = 21;
-                constexpr int k_BottomButton = 20;
-                constexpr int k_TopButton = 10;
+                constexpr int k_BottomButton = 10;
+                constexpr int k_TopButton = 20;
 
                 constexpr int k_AxisLX = 1;
                 constexpr int k_AxisLY = 2;
