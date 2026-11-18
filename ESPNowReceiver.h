@@ -10,7 +10,7 @@ namespace kmpf {
 
     class ESPNowReceiver : public atmt::Subsystem {
         public:
-            ESPNowReceiver(std::string receiver_name, atmt::Joystick* linked_joystick, atmt::ESPNowHandler* linked_handler);
+            ESPNowReceiver(std::string receiver_name, atmt::Joystick* linked_joystick, atmt::ESPNowHandler* linked_handler, atmt::Heartbeat* linked_hearbeat);
             ~ESPNowReceiver() override;
 
             void init() override;
@@ -37,6 +37,7 @@ namespace kmpf {
 
             atmt::Joystick* m_linked_joystick;
             atmt::ESPNowHandler* m_linked_espnow_handler;
+            atmt::Heartbeat* m_linked_heartbeat;
 
             bool m_initialized_without_error;
     };

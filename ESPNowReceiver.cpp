@@ -8,7 +8,7 @@
 
 namespace kmpf {
 
-    ESPNowReceiver::ESPNowReceiver(std::string receiver_name, atmt::Joystick* linked_joystick, atmt::ESPNowHandler* linked_handler):
+    ESPNowReceiver::ESPNowReceiver(std::string receiver_name, atmt::Joystick* linked_joystick, atmt::ESPNowHandler* linked_handler, atmt::Heartbeat* linked_hearbeat):
         m_broadcast_loop{ atmt::TimeoutManager(consts::ESPNow::k_BroadcastDelaySec) },
         m_heartbeat_loop{ atmt::TimeoutManager(consts::ESPNow::k_HeartbeatDelaySec) },
         m_led_1_transmit_loop{ atmt::TimeoutManager(consts::LED::k_BlinkRateSec) },
@@ -19,6 +19,7 @@ namespace kmpf {
         m_receiver_name{ receiver_name },
         m_linked_joystick{ linked_joystick },
         m_linked_espnow_handler{ linked_handler },
+        m_linked_heartbeat{ linked_hearbeat },
         m_initialized_without_error{ false }
     {
         
@@ -87,6 +88,7 @@ namespace kmpf {
                         m_is_connected_to_controller = true;
                         m_connected_controller_address = sender;
                         m_last_packet_timestamp = atmt::getSystemTime();
+                        m_linked_heartbeat->beatHeart();
                         acknowledgePair();
                     }
                     break;
@@ -110,6 +112,7 @@ namespace kmpf {
                         // atmt::platform_printf("Button: %d\n", packet.buttons);
 
                         m_last_packet_timestamp = atmt::getSystemTime();
+                        m_linked_heartbeat->beatHeart();
                     }
                     break;
             }
@@ -198,6 +201,16 @@ namespace kmpf {
     };
     atmt::JoystickState ESPNowReceiver::zeroJoystickInputs() {
         atmt::JoystickState new_state{ };
+
+        new_state.buttons = 0;
+        new_state.axes[0] = 0.0;
+        new_state.axes[1] = 0.0;
+        new_state.axes[2] = 0.0;
+        new_state.axes[3] = 0.0;
+        new_state.axes[4] = 0.0;
+        new_state.axes[5] = 0.0;
+        new_state.axis_range[0] = -1.0;
+        new_state.axis_range[1] = 1.0;
 
         return new_state;
     };

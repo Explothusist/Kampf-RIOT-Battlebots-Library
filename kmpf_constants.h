@@ -14,6 +14,7 @@ namespace kmpf {
             constexpr double k_SendStateDelaySec = 0.05; // Seconds 
             // constexpr const char* k_ESPNowId = "Spenc";
             constexpr double k_ESPNowDisableTimeoutSec = 1.0; // Seconds
+            constexpr double k_ESPNowDisableTimeoutMS = 1000; // Milliseconds
         }
         
         namespace Drivetrain {
@@ -24,7 +25,7 @@ namespace kmpf {
 
             constexpr double k_NoPWMPower = 0.0;
             constexpr double k_MaxPWMPower = 125.0;
-            constexpr double k_PWMPowerSecondsToMax = 1.0; // Seconds
+            constexpr double k_PWMPowerSecondsToMax = 0.05; // Seconds
             constexpr double k_PWNPowerSlewRate = (k_MaxPWMPower - k_NoPWMPower) / k_PWMPowerSecondsToMax;
         }
         namespace WeaponMotor {

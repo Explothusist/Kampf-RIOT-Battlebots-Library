@@ -49,6 +49,7 @@ namespace kmpf {
         if (m_last_command.getTimeDifference(atmt::getSystemTime()) > consts::WeaponMotor::k_SpindownTimeoutSec) {
             m_pwm_target_width_us = m_pwm_width_minimum_us;
         }
+        atmt::platform_printf("Spinning at: %f\n", m_current_pwm_width.calculateFiltered(m_pwm_target_width_us));
         m_motor.writeMicroseconds(m_current_pwm_width.calculateFiltered(m_pwm_target_width_us));
     };
     void WeaponMotor::disabledPeriodic() {
@@ -60,10 +61,14 @@ namespace kmpf {
     void WeaponMotor::armMotor() { // May need a delay in the arming sequence, depending on hardware?
         if (m_is_armed) return;
 
-        digitalWrite(consts::LED::k_LED3_Armed, HIGH);
         atmt::platform_printf("Arming Weapon Motor\n");
-        // m_motor.detach();
-        m_motor.attach(m_pin);
+        const int pwm_channel = m_motor.attach(m_pin);
+        if (pwm_channel < 0 || !m_motor.attached()) {
+            atmt::platform_printf("ERROR: Failed to attach weapon motor PWM on pin %d\n", m_pin);
+            return;
+        }
+
+        digitalWrite(consts::LED::k_LED3_Armed, HIGH);
         m_pwm_target_width_us = m_pwm_width_minimum_us;
         m_current_pwm_width.resetValue(m_pwm_width_minimum_us);
         m_motor.writeMicroseconds(m_pwm_width_minimum_us);
